@@ -1,0 +1,283 @@
+---
+title   : "**Black Friday Analysis**"
+Authors : "Likky Sai Prakash, Siva Nagendra Babu"
+output  : html_document
+---
+  
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+
+```{r,echo=FALSE}
+library(data.table)
+library(DataExplorer) # For initial exploratory data analysis
+library(dplyr) # For data manipulation
+library(ggplot2)
+library(vcd)
+library(rpart)
+```
+
+## **About our Data**:
+* The dataset here is a sample of the transactions made in a retail store.
+* The store wants to know better the customer purchase behaviour against different products.
+* Specifically, here the problem is a regression problem where we are trying to predict the dependent variable (the amount of purchase) with the help of the information contained in the other variables.
+
+
+* Things needed to be addressed:
+  + Understanding the customers on the basis of their purchasing habits.
++ Understanding the purchasing habits according to Age groups, Occuptation, City_Categories.
++ The above segmented group of users can be then used to model the data and use to predict the purchase
+spend for each customer.
+
+* Lets dive in by understanding the data.
+
+
+selecting Data 
+
+```{r,echo=FALSE}
+sales<-read.csv(file.choose())
+```
+
+
+# 1. Data Analysis
+
+## **a. Let's see how are our actually data looks like**
+
+```{r,echo=FALSE}
+head(sales,10)
+```
+
+### **Observations**:
+* 1.If we observe The Id column values are repeated with same numbers and it won't useful much in analysis
+  * 2.Here age column data is distributed in interval range 
+  * 3.There are total3 city categories
+  * 4.There are 3 different product Categories available to customers
+
+## **B. Lets see the shape of our data**
+
+```{r, echo=FALSE}
+dim(sales)
+```
+
+## **c. Let's get the Description of our Data**
+  
+  ```{r, echo=FALSE}
+str(sales)
+```
+
+### **Observations**:
+* We have Categorical and Discrete Data in our Data set
+* If we observe the Martial Status is of of Int where it should be Categorical
+* Regarding product Categories We observe some missing values, we need to Handle those.
+
+## **D. Let's see the missing values present in our Data**
+
+```{r, echo=FALSE}
+sapply(sales, function(x) sum(is.na(x)))
+plot_missing(sales)
+```
+
+
+### **Observations** :
+* We have missing values in Product_Category_2 and Product_category_3.
+
+## **E.Now we'll try to understand about variable distribution.**
+
+* Continuous variables 
+
+```{r, echo=FALSE}
+plot_histogram(sales)
+```
+
+* Discrete variables
+
++ Gender variable    
+
+```{r, echo=FALSE}
+prop.table(table(sales$Gender))
+```
+
++ Customer Age group
+
+```{r, echo=FALSE}
+prop.table(table(sales$Age))
+```
+
++ Which city has highest customers
+
+```{r, echo=FALSE}
+prop.table(table(sales$City_Category))
+```
+
++ Ration of category Stay_In_Current_City_Years
+
+```{r, echo=FALSE}
+prop.table(table(sales$Stay_In_Current_City_Years))
+```
+
+## **Lets Draw the above Data via graphical intution**
+```{r, echo=FALSE}
+plot_bar(sales)
+```
+
+# 2. Data Transformation 
+
+Lets Transform Features of our Data their Respective Data Type
+
+```{r,}
+sales$User_ID <- as.factor(sales$User_ID)
+sales$Product_ID <- as.factor(sales$Product_ID)
+sales$Age <- as.factor(sales$Age)
+sales$Occupation <- as.factor(sales$Occupation)
+sales$City_Category <- as.factor(sales$City_Category)
+sales$Stay_In_Current_City_Years <- as.factor(sales$Stay_In_Current_City_Years)
+sales$Product_Category_1 <- as.integer(sales$Product_Category_1)
+sales$Product_Category_2 <- as.integer(sales$Product_Category_2)
+sales$Product_Category_3 <- as.integer(sales$Product_Category_3)
+sales$Purchase <- as.numeric(sales$Purchase)
+```
+
+
+
+# 3.Exploratory Data Analysis:
+
+
+
+## Let's See who have purchased more so lets draw a count plot for it
+
+
+```{r,echo=FALSE}
+ggplot(sales, aes(Gender, Purchase)) + 
+  geom_bar( stat = "identity", fill = "steelblue", color = "blue") +
+  ggtitle("Total male and female Purchased") +
+  theme(legend.position = "none")
+```
+
+Male count is More compared to female count while black friday sales purchasing
+
+## Similarly let's see who have purchased more married or Unmarried
+
+```{r,echo=FALSE}
+ggplot(sales, aes(Marital_Status, Purchase)) + 
+  geom_bar( stat = "identity", fill = "steelblue", color = "blue") +
+  ggtitle("Total male and female Purchased") +
+  theme(legend.position = "none")
+```
+
+Unmarried have bought more than the married people
+
+## **1.Age group/gender category vs product category**:
+
+```{r, echo=FALSE}
+
+ggplot(sales, aes(Gender, Product_Category_1, fill = Gender)) + geom_col(width = 0.4) + facet_wrap(~ Age) + 
+  labs(title = "Age Group/Gender Vs Product Category 1")
+
+ggplot(sales, aes(Gender, Product_Category_2, fill = Gender)) + geom_col(width = 0.4) + facet_wrap(~ Age) + 
+  labs(title = "Age Group/Gender Vs Product Category 2")
+
+ggplot(sales, aes(Gender, Product_Category_3, fill = Gender)) + geom_col(width = 0.4) + facet_wrap(~ Age) + 
+  labs(title = "Age Group/Gender Vs Product Category 3")
+```
+
+
+
+### **Observations:**
+
+* So if we observe whether its product_category 1,2,3 most people from the age group 26-35 have purchased the    most.
+* And the next the people in age group of 18-25 and 36-45 have purchased most
+* With no surprise the females are the one's who done heavy shopping compared to men which is obvious in the     respective age group. 
+
+## **2. Occupation vs purchases**:
+
+```{r,echo=FALSE}
+ggplot(sales, aes(Occupation, Product_Category_1, fill = Occupation)) + geom_col() +  facet_wrap(~ Gender) +
+  labs(title = "Occupation Vs Product Category 1")
+
+ggplot(sales, aes(Occupation, Product_Category_2, fill = Occupation)) + geom_col() +  facet_wrap(~ Gender) +
+  labs(title = "Occupation Vs Product Category 2")
+
+ggplot(sales, aes(Occupation, Product_Category_3, fill = Occupation)) + geom_col() +  facet_wrap(~ Gender) +
+  labs(title = "Occupation Vs Product Category 3")
+```
+
+* 
+
+### **Observations:**
+
+* People of job category from 0-7 have purchased most products
+
+## **3. City Category vs Purchases:**
+
+```{r, echo=FALSE}
+ggplot(sales, aes(City_Category, Product_Category_1, fill = City_Category)) + geom_col() +  facet_wrap(~ Age) +
+  labs(title = "City Category Vs Product_Category 1")  
+ggplot(sales, aes(City_Category, Product_Category_2, fill = City_Category)) + geom_col() +  facet_wrap(~ Age) +
+  labs(title = "City Category Vs Product_Category 2")  
+ggplot(sales, aes(City_Category, Product_Category_3, fill = City_Category)) + geom_col() +  facet_wrap(~ Age) +
+  labs(title = "City Category Vs Product_Category 3")  
+
+```
+### **Observations:**
+
+* People From city B with age group 26-35 have purchased most 
+* Then city A with the similar group of have done most purchases
+
+
+
+## 4. Stay in cuntry vs product category and Purchase amount
+
+```{r,echo=FALSE}
+ggplot(sales, aes(Stay_In_Current_City_Years,Product_Category_1 , fill = Stay_In_Current_City_Years)) + geom_col() +  
+  facet_wrap(~ Age) + labs(title = "Stay in current city Vs Product_Category 1") 
+
+ggplot(sales, aes(Stay_In_Current_City_Years,Product_Category_2 , fill = Stay_In_Current_City_Years)) + geom_col() +  
+  facet_wrap(~ Age) + labs(title = "Stay in current city Vs Product_Category 2")
+
+ggplot(sales, aes(Stay_In_Current_City_Years,Product_Category_3 , fill = Stay_In_Current_City_Years)) + geom_col() +  
+  facet_wrap(~ Age) + labs(title = "Stay in current city Vs Product_Category 3") 
+```
+
+
+### **Observations:**
+
+* People Staying with the period of one year and with age group 26-35 have done most purchases
+
+
+## 6. Product Category vs Martial Status
+
+```{r,echo=FALSE}
+ggplot(sales, aes(Marital_Status, Product_Category_1, fill = Marital_Status)) + geom_col() +  
+  facet_wrap(~ City_Category) + labs(title = "Marital Status Vs Product_Category 1 (wrapped with city category)")  
+ggplot(sales, aes(Marital_Status, Product_Category_2, fill = Marital_Status)) + geom_col() +  
+  facet_wrap(~ City_Category) + labs(title = "Marital Status Vs Product_Category 1 (wrapped with city category)")  
+ggplot(sales, aes(Marital_Status, Product_Category_3, fill = Marital_Status)) + geom_col() +  
+  facet_wrap(~ City_Category) + labs(title = "Marital Status Vs Product_Category 1 (wrapped with city category)")  
+```
+
+### **Observations:**
+
+* People from city A with martial Status of not married have purchased more
+
+
+# Let's see if there are any outliers with respect to Occupation data so we'll draw boxplot for checking it
+
+```{r,echo=FALSE}
+qplot(data =  sales,x = Occupation ,y = Purchase ,geom = "boxplot")
+```
+
+See We have few outliers in some areas of the Occupation 
+
+
+
+# Conclusion:
+  + CITY CATEGORY B HAD THE MOST CUSTOMERS(42%), FOLLOWED BY C (31%), AND LASTLY A (27%)
+  + PEOPLE WHO HAD STAYED IN THE CITY FOR 1 YEAR CONSTITUTED MAJORITY OF THE CUSTOMERS
+  + SINGLES MADE UP 59 % WHILE MARRIED MADE UP 41% OF THE CUSTOMERS
+  + AS EXPECTED 26-35 YEAR OLDS SPENT MORE MONEY
+  + IN ALL THE CITY CATEGORIES, THE SINGLES SPENT THE MOST MONEY
+  + FOR THE PRODUCT CATEGORIES WITH THE HIGHEST PURCHASE, THE PLOTS PRESENT THEM IN DETAILS
+  
+
+
